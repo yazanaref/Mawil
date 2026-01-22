@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { 
-  Shield, BookOpen, Users, FileText, Landmark, Phone, 
-  MapPin, Clock, Mail, ChevronRight, AlertTriangle, 
-  CheckCircle, XCircle, Globe, GraduationCap, Scale, Lock,
-  Heart, Info
+  BookOpen, Users, FileText, Landmark, Clock, Mail, 
+  ChevronRight, AlertTriangle, Globe, GraduationCap
 } from 'lucide-react';
 
 // --- INSTITUTIONAL CONFIGURATION (EDIT THIS SECTION FOR COMPLIANCE) ---
@@ -823,6 +821,14 @@ const Contact = () => (
         <div>
           <h3 className="font-bold text-zinc-900 mb-2">Contact Information</h3>
           <p className="text-zinc-600">Email: {INSTITUTION.email}</p>
+          <div className="mt-8 pt-8 border-t border-zinc-200">
+             <h4 className="text-xs font-bold uppercase tracking-widest text-zinc-400 mb-3">Institutional Office</h4>
+             <p className="text-zinc-800 font-medium">{INSTITUTION.name}</p>
+             <p className="text-zinc-600">{INSTITUTION.address.line1}</p>
+             <p className="text-zinc-600">{INSTITUTION.address.line2}</p>
+             <p className="text-zinc-600">{INSTITUTION.address.city}, {INSTITUTION.address.postal}</p>
+             <p className="text-zinc-600">{INSTITUTION.address.country}</p>
+          </div>
         </div>
       </div>
       <div className="bg-zinc-50 p-6 rounded border">
