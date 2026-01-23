@@ -2,10 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { 
   BookOpen, Users, FileText, Landmark, Clock, Mail, 
-  ChevronRight, AlertTriangle, Globe, GraduationCap,
+  ChevronRight, AlertTriangle, Globe,
   MessageSquare, X, Send, Sparkles, Loader2
 } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
+
+// Declare process for TypeScript to avoid "Cannot find name 'process'" error
+declare var process: any;
 
 // --- INSTITUTIONAL CONFIGURATION ---
 
@@ -101,7 +104,37 @@ const STAFF: StaffMember[] = [
 // --- AI Chatbot Component ---
 
 const FormattedMessage = ({ content }: { content: string }) => {
-  const renderBoldText = (text: string) => {
+  const renderLine = (line: string, index: number) => {
+    const trimmed = line.trim();
+    if (!trimmed) return <div key={index} className="h-2" />;
+
+    // Basic Header detection
+    if (trimmed.startsWith('###')) {
+      return <h4 key={index} className="font-bold text-zinc-900 mt-3 mb-1">{trimmed.replace(/^###\s*/, '')}</h4>;
+    }
+    if (trimmed.startsWith('##')) {
+      return <h3 key={index} className="font-bold text-zinc-900 mt-4 mb-2 border-b border-zinc-100 pb-1">{trimmed.replace(/^##\s*/, '')}</h3>;
+    }
+
+    // Basic List detection
+    if (trimmed.startsWith('* ') || trimmed.startsWith('- ')) {
+      return (
+        <div key={index} className="flex gap-2 ml-2">
+          <span className="text-zinc-400">•</span>
+          <span className="flex-grow">{parseBold(trimmed.substring(2))}</span>
+        </div>
+      );
+    }
+
+    // Numbered List detection
+    if (/^\d+\.\s/.test(trimmed)) {
+      return <div key={index} className="ml-2 leading-relaxed">{parseBold(line)}</div>;
+    }
+
+    return <p key={index} className="leading-relaxed">{parseBold(line)}</p>;
+  };
+
+  const parseBold = (text: string) => {
     const parts = text.split(/(\*\*.*?\*\*)/g);
     return parts.map((part, i) => {
       if (part.startsWith('**') && part.endsWith('**')) {
@@ -111,39 +144,9 @@ const FormattedMessage = ({ content }: { content: string }) => {
     });
   };
 
-  const lines = content.split('\n');
   return (
-    <div className="space-y-1.5">
-      {lines.map((line, i) => {
-        const trimmed = line.trim();
-        if (!trimmed) return <div key={i} className="h-1" />;
-
-        // Headers
-        if (trimmed.startsWith('### ')) {
-          return <h4 key={i} className="font-bold text-zinc-900 mt-3 mb-1">{trimmed.replace('### ', '')}</h4>;
-        }
-        if (trimmed.startsWith('## ')) {
-          return <h3 key={i} className="font-bold text-zinc-900 mt-4 mb-1 text-base border-b border-zinc-100 pb-0.5">{trimmed.replace('## ', '')}</h3>;
-        }
-
-        // List items
-        if (trimmed.startsWith('* ') || trimmed.startsWith('- ')) {
-          const text = trimmed.substring(2);
-          return (
-            <div key={i} className="flex gap-2 ml-1">
-              <span className="text-zinc-400">•</span>
-              <span>{renderBoldText(text)}</span>
-            </div>
-          );
-        }
-
-        // Ordered list items (simple check for "1. ", "2. ")
-        if (/^\d+\.\s/.test(trimmed)) {
-          return <div key={i} className="ml-1 leading-relaxed">{renderBoldText(line)}</div>;
-        }
-
-        return <p key={i} className="leading-relaxed">{renderBoldText(line)}</p>;
-      })}
+    <div className="space-y-1">
+      {content.split('\n').map((line, i) => renderLine(line, i))}
     </div>
   );
 };
@@ -186,13 +189,11 @@ const MawilAssistant = () => {
         - Admission Steps: 1. Apply Online, 2. Document Review, 3. Interview, 4. Enrollment.
         
         FORMATTING RULES:
-        1. Use Markdown for structure.
+        1. ALWAYS use Markdown for structure.
         2. Use ### for subheaders.
-        3. Use **bold text** for emphasis (names, program titles, etc.).
-        4. Use bullet points for lists.
-        5. Be concise. 
-        6. Always provide a clear, formatted answer using the provided data.
-        7. If a student asks about applying, mention the 4 steps clearly.
+        3. Use **bold text** for emphasis on program names, credits, or staff.
+        4. Use bullet points for lists of outcomes or modules.
+        5. Be professional and concise.
       `;
 
       const response = await ai.models.generateContent({
@@ -215,20 +216,20 @@ const MawilAssistant = () => {
   };
 
   const quickActions = [
-    "Tell me more about Maw'il",
-    "Admissions process?",
-    "Show academic programs",
-    "Faculty credentials?"
+    "Tell me about Maw'il",
+    "How to apply?",
+    "View programs",
+    "Faculty list"
   ];
 
   return (
     <div className="fixed bottom-24 right-6 z-50">
       {isOpen ? (
-        <div className="bg-white w-80 md:w-[400px] h-[550px] shadow-2xl rounded-2xl border border-zinc-200 flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
+        <div className="bg-white w-80 md:w-[420px] h-[580px] shadow-2xl rounded-2xl border border-zinc-200 flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
           {/* Header */}
-          <div className="bg-primary-900 p-4 text-white flex items-center justify-between shadow-lg">
-            <div className="flex items-center gap-2">
-              <div className="bg-amber-600 p-1.5 rounded-lg">
+          <div className="bg-primary-900 p-4 text-white flex items-center justify-between shadow-md">
+            <div className="flex items-center gap-3">
+              <div className="bg-amber-600 p-2 rounded-lg">
                 <Sparkles className="w-4 h-4 text-white" />
               </div>
               <div>
@@ -245,7 +246,7 @@ const MawilAssistant = () => {
           <div ref={scrollRef} className="flex-grow overflow-y-auto p-4 space-y-4 bg-zinc-50 scroll-smooth">
             {messages.map((m, i) => (
               <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[90%] p-4 rounded-2xl text-[13px] shadow-sm ${
+                <div className={`max-w-[85%] p-4 rounded-2xl text-[13px] shadow-sm leading-relaxed ${
                   m.role === 'user' 
                   ? 'bg-primary-900 text-white rounded-tr-none' 
                   : 'bg-white border border-zinc-200 text-zinc-700 rounded-tl-none'
@@ -257,12 +258,8 @@ const MawilAssistant = () => {
             {isLoading && (
               <div className="flex justify-start">
                 <div className="bg-white border border-zinc-200 p-3 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-3">
-                  <div className="flex gap-1">
-                    <div className="w-1.5 h-1.5 bg-zinc-300 rounded-full animate-bounce"></div>
-                    <div className="w-1.5 h-1.5 bg-zinc-300 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                    <div className="w-1.5 h-1.5 bg-zinc-300 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                  </div>
-                  <span className="text-[11px] text-zinc-400 font-medium">Assistant is thinking...</span>
+                  <Loader2 className="w-4 h-4 animate-spin text-primary-900" />
+                  <span className="text-[11px] text-zinc-400 font-medium italic">Consulting academic database...</span>
                 </div>
               </div>
             )}
@@ -270,12 +267,12 @@ const MawilAssistant = () => {
 
           {/* Quick Actions */}
           {messages.length < 3 && !isLoading && (
-            <div className="px-4 py-2 bg-zinc-50 flex flex-wrap gap-2">
+            <div className="px-4 py-3 bg-white border-t border-zinc-50 flex flex-wrap gap-2">
               {quickActions.map(action => (
                 <button 
                   key={action}
                   onClick={() => handleSend(action)}
-                  className="text-[11px] bg-white border border-zinc-200 hover:border-primary-900 hover:text-primary-900 transition-all rounded-full px-3 py-1.5 font-medium shadow-sm"
+                  className="text-[11px] bg-zinc-50 text-zinc-600 border border-zinc-200 hover:border-primary-900 hover:text-primary-900 hover:bg-primary-50 transition-all rounded-full px-3 py-1.5 font-bold shadow-sm"
                 >
                   {action}
                 </button>
@@ -309,7 +306,7 @@ const MawilAssistant = () => {
         >
           <MessageSquare className="w-6 h-6" />
           <span className="absolute right-full mr-4 bg-white text-zinc-900 px-3 py-1.5 rounded-lg text-xs font-bold shadow-xl border border-zinc-100 opacity-0 group-hover:opacity-100 whitespace-nowrap transition-opacity pointer-events-none">
-            Institutional Support
+            Institutional Assistant
           </span>
           <div className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 rounded-full border-2 border-primary-900 animate-pulse flex items-center justify-center">
             <Sparkles className="w-2 h-2 text-white" />
