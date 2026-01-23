@@ -1,17 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import { 
   BookOpen, Users, FileText, Landmark, Clock, Mail, 
-  ChevronRight, AlertTriangle, Globe, GraduationCap
+  ChevronRight, AlertTriangle, Globe, GraduationCap,
+  MessageSquare, X, Send, Sparkles, Loader2
 } from 'lucide-react';
+import { GoogleGenAI } from "@google/genai";
 
-// --- INSTITUTIONAL CONFIGURATION (EDIT THIS SECTION FOR COMPLIANCE) ---
-// Google Workspace for Education requires accurate physical presence data.
+// --- INSTITUTIONAL CONFIGURATION ---
 
 const INSTITUTION = {
   name: "Maw'il (موئل)",
   subtitle: "Institute",
-  // IMPORTANT: Google Verification checks this against Maps. Use your real office address.
   address: {
     line1: "King Abdullah Road",
     line2: "Al Mohammadiyah District",
@@ -19,9 +19,7 @@ const INSTITUTION = {
     postal: "12363",
     country: "Saudi Arabia"
   },
-  // IMPORTANT: Email domain must match the website domain for verification.
   email: "info@mawil.org",
-  // IMPORTANT: Add your Ministry of Education or Non-Profit License number here.
   licenseNumber: "License No: [PENDING/UNDER-REVIEW]", 
   foundedYear: 2024
 };
@@ -48,7 +46,12 @@ interface StaffMember {
   email: string;
 }
 
-// --- Data Placeholders (Strict Compliance: Zoology/Conservation Track) ---
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+// --- Data ---
 
 const PROGRAMS: Program[] = [
   {
@@ -88,229 +91,233 @@ const PROGRAMS: Program[] = [
 ];
 
 const STAFF: StaffMember[] = [
-  // Governance / Admin
   { id: 'founder', name: 'Dr. Yazan Mohammad Aref', role: 'Founder & Website Manager', department: 'Administration / Tech', credentials: 'PhD in Zoology', email: 'yazanaref@mawil.org' },
-  
-  // Operations
   { id: 'ops-1', name: 'Mohammad Nour Issa', role: 'Admin Assistant', department: 'Operations & Administration', credentials: 'Staff', email: 'mohammad@mawil.org' },
   { id: 'ops-2', name: 'Touleen Saidi', role: 'Admin Assistant', department: 'Operations & Administration', credentials: 'Staff', email: 'touleen@mawil.org' },
-  { id: 'ops-3', name: 'Mareen Lamfon', role: 'Volunteers Coordinator', department: 'Operations & Administration', credentials: 'Staff', email: 'mareen@mawil.org' },
-
-  // Community & Outreach
-  { id: 'comm-1', name: 'Mohsen Alkhowildi', role: 'WhatsApp Community Manager', department: 'Community & Outreach', credentials: 'Staff', email: 'mohsen@mawil.org' },
-  { id: 'comm-2', name: 'Alice Dawood Almohammed', role: 'School Outreach Lead', department: 'Community & Outreach', credentials: 'Staff', email: 'alice@mawil.org' },
-  { id: 'comm-3', name: 'Layan Amin', role: 'School Outreach Lead', department: 'Community & Outreach', credentials: 'Staff', email: 'layan@mawil.org' },
-
-  // Webinars & Events
-  { id: 'web-1', name: 'Elaf Khalil', role: 'Event Coordinator', department: 'Webinars & Events', credentials: 'Staff', email: 'elaf@mawil.org' },
-  { id: 'web-2', name: 'Zainab Mohamed Hazary', role: 'Event Coordinator', department: 'Webinars & Events', credentials: 'Staff', email: 'zainab@mawil.org' },
-  { id: 'web-3', name: 'Hana Selim', role: 'Webinar Host/Moderator', department: 'Webinars & Events', credentials: 'Staff', email: 'hana@mawil.org' },
-  { id: 'web-4', name: 'Haale Ayesha Khan', role: 'Webinar Host/Moderator', department: 'Webinars & Events', credentials: 'Staff', email: 'haale@mawil.org' },
-
-  // Content & Education
-  { id: 'cont-1', name: 'Sarah Algodairy', role: 'Content Coordinator', department: 'Content & Education', credentials: 'Staff', email: 'sarahalgodairy@mawil.org' },
-  { id: 'cont-2', name: 'Aseel Hassan Alsuhabi', role: 'Wildlife Research Lead', department: 'Content & Education', credentials: 'Researcher', email: 'aseel@mawil.org' },
-  { id: 'cont-3', name: 'Malak Hani', role: 'Wildlife Research Lead', department: 'Content & Education', credentials: 'Researcher', email: 'malak@mawil.org' },
-  { id: 'cont-4', name: 'Fatimah Hejji', role: 'Marine Life Research Lead', department: 'Content & Education', credentials: 'Researcher', email: 'fatimah@mawil.org' },
-
-  // Media & Creative
   { id: 'med-1', name: 'Sarah Abdullah Arrfdy', role: 'Graphic Designer', department: 'Media & Creative', credentials: 'Creative', email: 'sarah@mawil.org' },
-  { id: 'med-2', name: 'Aljoory Al Taha', role: 'Graphic Designer', department: 'Media & Creative', credentials: 'Creative', email: 'aljoory@mawil.org' },
-  { id: 'med-3', name: 'Noor Talal Bokhamsin', role: 'Digital Artist', department: 'Media & Creative', credentials: 'Creative', email: 'noor@mawil.org' },
-  { id: 'med-4', name: 'Najd Sami Alkhashan', role: 'Digital Artist', department: 'Media & Creative', credentials: 'Creative', email: 'najd@mawil.org' },
-  { id: 'med-5', name: 'Mohammed Sameer Alqassimi', role: 'Content Creator', department: 'Media & Creative', credentials: 'Creative', email: 'mohammed@mawil.org' },
-  { id: 'med-6', name: 'Jana Mohammed Al-Yami', role: 'Assistant Content Creator', department: 'Media & Creative', credentials: 'Creative', email: 'janaal-yami@mawil.org' },
-  { id: 'med-7', name: 'Leen Hussam Rafik Haj Bakri', role: 'Video Editor', department: 'Media & Creative', credentials: 'Creative', email: 'leen@mawil.org' },
-
-  // Social Media
-  { id: 'soc-1', name: 'Jana Mohamed Tameesh', role: 'Social Media Manager', department: 'Social Media & Comms', credentials: 'Staff', email: 'jana@mawil.org' },
-  { id: 'soc-2', name: 'Lujain Al-anazi', role: 'Social Media Assistant', department: 'Social Media & Comms', credentials: 'Staff', email: 'lujain@mawil.org' },
-  { id: 'soc-3', name: 'Raya Ali', role: 'Social Media Assistant', department: 'Social Media & Comms', credentials: 'Staff', email: 'raya@mawil.org' },
-  { id: 'soc-4', name: 'Maha Khan', role: 'Copywriter', department: 'Social Media & Comms', credentials: 'Staff', email: 'maha@mawil.org' },
-
-  // Tech
-  { id: 'tech-1', name: 'AbdulHakim Khan', role: 'Website Technician', department: 'Website & Development', credentials: 'Tech', email: 'abdulhakim@mawil.org' },
-  { id: 'tech-2', name: 'Omer Hijazi', role: 'Website Technician & Game Designer', department: 'Website & Development', credentials: 'Tech', email: 'omer@mawil.org' },
-
-  // Partnerships
-  { id: 'part-1', name: 'Tulay Ayman Al-Maghrabi', role: 'Public Relations Manager', department: 'Partnerships', credentials: 'Manager', email: 'tulay@mawil.org' },
-  { id: 'part-2', name: 'Mazen Abdulaziz Alghamdi', role: 'Outreach Lead', department: 'Partnerships', credentials: 'Lead', email: 'mazen@mawil.org' },
-  { id: 'part-3', name: 'Aleezay Arsalan', role: 'Outreach Lead', department: 'Partnerships', credentials: 'Lead', email: 'aleezay@mawil.org' },
+  { id: 'tech-1', name: 'AbdulHakim Khan', role: 'Website Technician', department: 'Website & Development', credentials: 'Tech', email: 'abdulhakim@mawil.org' }
 ];
 
-const POLICY_CONTENT: Record<string, { title: string; content: React.ReactNode }> = {
-  'academic-integrity': {
-    title: 'Academic Integrity Policy',
-    content: (
-      <div className="space-y-6">
-        <section>
-          <h3 className="text-xl font-bold mb-2">1. Principle of Honest Scholarship</h3>
-          <p>Maw'il Institute is dedicated to the highest standards of academic honesty. All members of the community are expected to create and present their own work and to attribute all sources used in intellectual production.</p>
-        </section>
-        <section>
-          <h3 className="text-xl font-bold mb-2">2. Definitions of Academic Misconduct</h3>
-          <ul className="list-disc pl-5 space-y-2">
-            <li><strong>Plagiarism:</strong> Representing another's work, words, or ideas as one's own without proper attribution.</li>
-            <li><strong>Cheating:</strong> Using unauthorized materials during examinations or assessments.</li>
-            <li><strong>Fabrication:</strong> Falsifying data, citations, or information.</li>
-            <li><strong>Unauthorized Collaboration:</strong> Working with others on assignments designated as individual work.</li>
-          </ul>
-        </section>
-        <section>
-          <h3 className="text-xl font-bold mb-2">3. Disciplinary Procedures</h3>
-          <p>Violations are reviewed by the Academic Committee. Sanctions may range from:</p>
-          <ul className="list-disc pl-5 mt-2">
-            <li>Failling grade for the assignment (Zero).</li>
-            <li>Failling grade for the course.</li>
-            <li>Academic Probation.</li>
-            <li>Expulsion from the Institute for repeated offenses.</li>
-          </ul>
-        </section>
-      </div>
-    )
-  },
-  'assessment': {
-    title: 'Assessment & Grading Policy',
-    content: (
-      <div className="space-y-6">
-        <section>
-          <h3 className="text-xl font-bold mb-2">1. Grading System</h3>
-          <p>Student performance is evaluated based on the following scale:</p>
-          <div className="overflow-x-auto mt-2 border rounded">
-            <table className="min-w-full text-sm">
-              <thead className="bg-zinc-100">
-                <tr>
-                  <th className="px-4 py-2 text-left">Grade</th>
-                  <th className="px-4 py-2 text-left">Percentage</th>
-                  <th className="px-4 py-2 text-left">Description</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-t"><td className="px-4 py-2 font-bold">A</td><td className="px-4 py-2">90-100%</td><td className="px-4 py-2">Excellent</td></tr>
-                <tr className="border-t"><td className="px-4 py-2 font-bold">B</td><td className="px-4 py-2">80-89%</td><td className="px-4 py-2">Good</td></tr>
-                <tr className="border-t"><td className="px-4 py-2 font-bold">C</td><td className="px-4 py-2">70-79%</td><td className="px-4 py-2">Satisfactory</td></tr>
-                <tr className="border-t"><td className="px-4 py-2 font-bold">D</td><td className="px-4 py-2">60-69%</td><td className="px-4 py-2">Passing</td></tr>
-                <tr className="border-t"><td className="px-4 py-2 font-bold">F</td><td className="px-4 py-2">0-59%</td><td className="px-4 py-2">Fail</td></tr>
-              </tbody>
-            </table>
+// --- AI Chatbot Component ---
+
+const FormattedMessage = ({ content }: { content: string }) => {
+  const renderBoldText = (text: string) => {
+    const parts = text.split(/(\*\*.*?\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={i} className="font-bold text-zinc-900">{part.slice(2, -2)}</strong>;
+      }
+      return part;
+    });
+  };
+
+  const lines = content.split('\n');
+  return (
+    <div className="space-y-1.5">
+      {lines.map((line, i) => {
+        const trimmed = line.trim();
+        if (!trimmed) return <div key={i} className="h-1" />;
+
+        // Headers
+        if (trimmed.startsWith('### ')) {
+          return <h4 key={i} className="font-bold text-zinc-900 mt-3 mb-1">{trimmed.replace('### ', '')}</h4>;
+        }
+        if (trimmed.startsWith('## ')) {
+          return <h3 key={i} className="font-bold text-zinc-900 mt-4 mb-1 text-base border-b border-zinc-100 pb-0.5">{trimmed.replace('## ', '')}</h3>;
+        }
+
+        // List items
+        if (trimmed.startsWith('* ') || trimmed.startsWith('- ')) {
+          const text = trimmed.substring(2);
+          return (
+            <div key={i} className="flex gap-2 ml-1">
+              <span className="text-zinc-400">•</span>
+              <span>{renderBoldText(text)}</span>
+            </div>
+          );
+        }
+
+        // Ordered list items (simple check for "1. ", "2. ")
+        if (/^\d+\.\s/.test(trimmed)) {
+          return <div key={i} className="ml-1 leading-relaxed">{renderBoldText(line)}</div>;
+        }
+
+        return <p key={i} className="leading-relaxed">{renderBoldText(line)}</p>;
+      })}
+    </div>
+  );
+};
+
+const MawilAssistant = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    { role: 'assistant', content: "Welcome to **Maw'il Institute (موئل)**. We are a non-profit educational institution dedicated to the advancement of Zoology and Biological Sciences through rigorous scholarship.\n\nHow can I help you today with information regarding our **academic programs**, **faculty**, or **enrollment steps**?" }
+  ]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages, isLoading]);
+
+  const handleSend = async (customMsg?: string) => {
+    const userMsg = customMsg || input;
+    if (!userMsg.trim() || isLoading) return;
+
+    if (!customMsg) setInput('');
+    setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
+    setIsLoading(true);
+
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      
+      const systemInstruction = `
+        You are "Maw'il Assistant", the official AI representative for Maw'il Institute (موئل).
+        INSTITUTION: Non-profit, based in Riyadh, Saudi Arabia.
+        MISSION: Rigorous scientific scholarship in Zoology and Biology.
+        FOUNDER: Dr. Yazan Mohammad Aref (PhD in Zoology).
+        
+        AVAILABLE DATA:
+        - Programs: ${JSON.stringify(PROGRAMS)}
+        - Staff: ${JSON.stringify(STAFF)}
+        - Admission Steps: 1. Apply Online, 2. Document Review, 3. Interview, 4. Enrollment.
+        
+        FORMATTING RULES:
+        1. Use Markdown for structure.
+        2. Use ### for subheaders.
+        3. Use **bold text** for emphasis (names, program titles, etc.).
+        4. Use bullet points for lists.
+        5. Be concise. 
+        6. Always provide a clear, formatted answer using the provided data.
+        7. If a student asks about applying, mention the 4 steps clearly.
+      `;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: userMsg,
+        config: {
+          systemInstruction: systemInstruction,
+          temperature: 0.7,
+        }
+      });
+
+      const aiContent = response.text || "I apologize, I'm having trouble retrieving that information. Please contact info@mawil.org for direct assistance.";
+      setMessages(prev => [...prev, { role: 'assistant', content: aiContent }]);
+    } catch (error) {
+      console.error("AI Chat Error:", error);
+      setMessages(prev => [...prev, { role: 'assistant', content: "I encountered a technical error. Please try again later or contact our administration at **info@mawil.org**." }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const quickActions = [
+    "Tell me more about Maw'il",
+    "Admissions process?",
+    "Show academic programs",
+    "Faculty credentials?"
+  ];
+
+  return (
+    <div className="fixed bottom-24 right-6 z-50">
+      {isOpen ? (
+        <div className="bg-white w-80 md:w-[400px] h-[550px] shadow-2xl rounded-2xl border border-zinc-200 flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
+          {/* Header */}
+          <div className="bg-primary-900 p-4 text-white flex items-center justify-between shadow-lg">
+            <div className="flex items-center gap-2">
+              <div className="bg-amber-600 p-1.5 rounded-lg">
+                <Sparkles className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm">Maw'il Assistant</h3>
+                <p className="text-[10px] text-zinc-300 uppercase tracking-widest font-semibold">Institutional AI</p>
+              </div>
+            </div>
+            <button onClick={() => setIsOpen(false)} className="hover:bg-primary-800 p-1 rounded-full transition-colors">
+              <X className="w-5 h-5" />
+            </button>
           </div>
-        </section>
-        <section>
-          <h3 className="text-xl font-bold mb-2">2. Submission of Work</h3>
-          <p>Assignments must be submitted via the Learning Management System (LMS) by the stated deadline. Late submissions are subject to a 10% grade reduction per day, up to three days. Submissions later than three days are not accepted without a documented medical or emergency excuse.</p>
-        </section>
-        <section>
-          <h3 className="text-xl font-bold mb-2">3. Appeals</h3>
-          <p>Students may appeal a grade within 7 days of its posting by submitting a written request to the Registrar, detailing the grounds for the appeal.</p>
-        </section>
-      </div>
-    )
-  },
-  'attendance': {
-    title: 'Attendance & Participation',
-    content: (
-      <div className="space-y-6">
-        <section>
-          <h3 className="text-xl font-bold mb-2">1. Attendance Requirements</h3>
-          <p>Regular attendance is a core academic requirement. Students are expected to attend all scheduled classes, seminars, and laboratory sessions.</p>
-        </section>
-        <section>
-          <h3 className="text-xl font-bold mb-2">2. Minimum Attendance Threshold</h3>
-          <p>To receive credit for a course, a student must maintain a minimum attendance rate of <strong>80%</strong>. Students falling below this threshold will receive an automatic 'F' grade, barring exceptional circumstances approved by the Director of Academic Affairs.</p>
-        </section>
-        <section>
-          <h3 className="text-xl font-bold mb-2">3. Excused Absences</h3>
-          <p>Absences may be excused for medical emergencies, compassionate leave, or official institutional representation. Documentation (e.g., medical certificate) must be submitted to the Registrar within 48 hours of return.</p>
-        </section>
-      </div>
-    )
-  },
-  'privacy': {
-    title: 'Student Privacy & Data Protection',
-    content: (
-      <div className="space-y-6">
-        <section>
-          <h3 className="text-xl font-bold mb-2">1. Commitment to Privacy</h3>
-          <p>Maw'il is committed to protecting the privacy of student records. We adhere to international best practices regarding data minimization and security.</p>
-        </section>
-        <section>
-          <h3 className="text-xl font-bold mb-2">2. Data Collection & Use</h3>
-          <p>We collect personal information solely for educational administration, including enrollment, assessment, and academic record-keeping. We do not sell, trade, or rent student personal identification information to third parties.</p>
-        </section>
-        <section>
-          <h3 className="text-xl font-bold mb-2">3. Access to Records</h3>
-          <p>Students have the right to inspect and review their education records maintained by the school. Requests should be submitted in writing to the Registrar's office and will be fulfilled within 30 days.</p>
-        </section>
-        <section>
-          <h3 className="text-xl font-bold mb-2">4. Directory Information</h3>
-          <p>The institution may disclose "directory information" (name, dates of attendance, degrees conferred) without consent, unless a student formally requests a hold on such release.</p>
-        </section>
-      </div>
-    )
-  },
-  'terms': {
-    title: 'Terms of Use & Acceptable Use Policy',
-    content: (
-      <div className="space-y-6">
-        <section>
-          <h3 className="text-xl font-bold mb-2">1. Educational Purpose</h3>
-          <p>Institutional accounts (email, LMS access) and technology resources are provided exclusively for educational and administrative purposes supporting the mission of Maw'il.</p>
-        </section>
-        <section>
-          <h3 className="text-xl font-bold mb-2">2. Prohibited Activities</h3>
-          <p>Users may not use institutional resources for:</p>
-          <ul className="list-disc pl-5 mt-2">
-            <li>Commercial activity or personal financial gain.</li>
-            <li>Harassment, bullying, or hate speech.</li>
-            <li>Accessing or distributing illegal or obscene material.</li>
-            <li>Compromising the security of the network or other users' accounts.</li>
-          </ul>
-        </section>
-        <section>
-          <h3 className="text-xl font-bold mb-2">3. Account Termination</h3>
-          <p>The institution reserves the right to suspend or terminate access to technology resources for violations of this policy or upon the conclusion of enrollment/employment.</p>
-        </section>
-      </div>
-    )
-  },
-  'grievance': {
-    title: 'Grievance & Appeals Procedures',
-    content: (
-      <div className="space-y-6">
-        <section>
-          <h3 className="text-xl font-bold mb-2">1. Purpose</h3>
-          <p>Maw'il provides a fair and transparent process for students to seek resolution of academic or administrative disputes.</p>
-        </section>
-        <section>
-          <h3 className="text-xl font-bold mb-2">2. Informal Resolution</h3>
-          <p>Students are encouraged to first attempt to resolve the issue directly with the faculty member or staff person involved through constructive dialogue.</p>
-        </section>
-        <section>
-          <h3 className="text-xl font-bold mb-2">3. Formal Complaint</h3>
-          <p>If informal resolution fails, a student may file a formal written complaint to the Office of Academic Affairs. The complaint must detail the nature of the grievance, the evidence, and the desired outcome.</p>
-        </section>
-        <section>
-          <h3 className="text-xl font-bold mb-2">4. Review Committee</h3>
-          <p>A Grievance Committee, typically composed of one administrator and two faculty members, will review the complaint, conduct necessary interviews, and issue a written decision within 15 business days. The decision of the Committee is final.</p>
-        </section>
-      </div>
-    )
-  },
-  'nondiscrimination': {
-    title: 'Non-Discrimination Policy',
-    content: (
-      <div className="space-y-6">
-        <section>
-          <h3 className="text-xl font-bold mb-2">1. Policy Statement</h3>
-          <p>Maw'il Institute admits students of any race, color, national and ethnic origin to all the rights, privileges, programs, and activities generally accorded or made available to students at the school. It does not discriminate on the basis of race, color, national and ethnic origin in administration of its educational policies, admissions policies, scholarship and loan programs, and athletic and other school-administered programs.</p>
-        </section>
-        <section>
-          <h3 className="text-xl font-bold mb-2">2. Inclusive Environment</h3>
-          <p>We are dedicated to creating a supportive and inclusive scholarly community where diverse perspectives are valued as essential to the pursuit of knowledge.</p>
-        </section>
-      </div>
-    )
-  }
+
+          {/* Messages */}
+          <div ref={scrollRef} className="flex-grow overflow-y-auto p-4 space-y-4 bg-zinc-50 scroll-smooth">
+            {messages.map((m, i) => (
+              <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-[90%] p-4 rounded-2xl text-[13px] shadow-sm ${
+                  m.role === 'user' 
+                  ? 'bg-primary-900 text-white rounded-tr-none' 
+                  : 'bg-white border border-zinc-200 text-zinc-700 rounded-tl-none'
+                }`}>
+                  <FormattedMessage content={m.content} />
+                </div>
+              </div>
+            ))}
+            {isLoading && (
+              <div className="flex justify-start">
+                <div className="bg-white border border-zinc-200 p-3 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-3">
+                  <div className="flex gap-1">
+                    <div className="w-1.5 h-1.5 bg-zinc-300 rounded-full animate-bounce"></div>
+                    <div className="w-1.5 h-1.5 bg-zinc-300 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                    <div className="w-1.5 h-1.5 bg-zinc-300 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                  </div>
+                  <span className="text-[11px] text-zinc-400 font-medium">Assistant is thinking...</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Quick Actions */}
+          {messages.length < 3 && !isLoading && (
+            <div className="px-4 py-2 bg-zinc-50 flex flex-wrap gap-2">
+              {quickActions.map(action => (
+                <button 
+                  key={action}
+                  onClick={() => handleSend(action)}
+                  className="text-[11px] bg-white border border-zinc-200 hover:border-primary-900 hover:text-primary-900 transition-all rounded-full px-3 py-1.5 font-medium shadow-sm"
+                >
+                  {action}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Input */}
+          <div className="p-4 bg-white border-t border-zinc-100 flex gap-2">
+            <input 
+              type="text" 
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+              placeholder="Ask about programs, faculty..."
+              className="flex-grow bg-zinc-100 border-none rounded-full px-4 py-2 text-sm focus:ring-2 focus:ring-primary-900 transition-all outline-none"
+            />
+            <button 
+              onClick={() => handleSend()}
+              disabled={isLoading || !input.trim()}
+              className="bg-primary-900 text-white p-2.5 rounded-full disabled:opacity-50 hover:bg-primary-800 transition-colors shadow-md flex items-center justify-center"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button 
+          onClick={() => setIsOpen(true)}
+          className="bg-primary-900 text-white p-4 rounded-full shadow-2xl hover:bg-primary-800 transition-all hover:scale-110 flex items-center justify-center group relative border-2 border-white"
+        >
+          <MessageSquare className="w-6 h-6" />
+          <span className="absolute right-full mr-4 bg-white text-zinc-900 px-3 py-1.5 rounded-lg text-xs font-bold shadow-xl border border-zinc-100 opacity-0 group-hover:opacity-100 whitespace-nowrap transition-opacity pointer-events-none">
+            Institutional Support
+          </span>
+          <div className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 rounded-full border-2 border-primary-900 animate-pulse flex items-center justify-center">
+            <Sparkles className="w-2 h-2 text-white" />
+          </div>
+        </button>
+      )}
+    </div>
+  );
 };
 
 // --- Components ---
@@ -319,7 +326,6 @@ const MawilLogo = ({ className }: { className?: string }) => {
   const [error, setError] = useState(false);
 
   if (error) {
-    // Fallback SVG (Beige/Green Emblem with 'M') for when image is missing
     return (
       <svg viewBox="0 0 100 100" className={className} xmlns="http://www.w3.org/2000/svg" aria-label="Maw'il Logo Fallback">
          <circle cx="50" cy="50" r="48" fill="#E6DCC3" stroke="#20411B" strokeWidth="4" />
@@ -345,7 +351,7 @@ const MawilLogo = ({ className }: { className?: string }) => {
   );
 };
 
-const NavLink = ({ to, label, current, setRoute }: { to: string, label: string, current: string, setRoute: (r: string) => void }) => (
+const NavLink: React.FC<{ to: string, label: string, current: string, setRoute: (r: string) => void }> = ({ to, label, current, setRoute }) => (
   <button 
     onClick={() => { setRoute(to); window.scrollTo(0,0); }}
     className={`px-3 py-2 text-sm font-medium transition-colors ${current === to ? 'text-primary-900 border-b-2 border-primary-900' : 'text-zinc-600 hover:text-primary-800'}`}
@@ -398,12 +404,6 @@ const Footer = ({ setRoute }: { setRoute: (r: string) => void }) => {
           </div>
         </div>
       </div>
-      <div className="max-w-7xl mx-auto px-4 mt-12 pt-8 border-t border-primary-800 flex flex-wrap gap-6 justify-center text-xs text-zinc-500">
-        <button onClick={() => setRoute('/policies/nondiscrimination')}>Non-Discrimination Policy</button>
-        <button onClick={() => setRoute('/policies/privacy')}>Privacy Policy</button>
-        <button onClick={() => setRoute('/policies/terms')}>Terms of Service</button>
-        <button onClick={() => setRoute('/policies/grievance')}>Grievance Procedures</button>
-      </div>
     </footer>
   );
 };
@@ -419,7 +419,7 @@ const WebsiteStatus = () => (
          </div>
          <div>
             <p className="text-sm font-medium leading-relaxed">
-              You are viewing the official Maw’il Institute website. Some sections are currently being updated as new institutional information is published. For official enquiries, contact info@mawil.org
+              You are viewing the official Maw’il Institute website. Some sections are currently being updated. For official enquiries, contact info@mawil.org
             </p>
          </div>
        </div>
@@ -478,24 +478,20 @@ const Home = ({ setRoute }: { setRoute: (r: string) => void }) => (
 const About = () => (
   <div className="max-w-4xl mx-auto px-4 py-12">
     <h1 className="text-3xl font-serif font-bold text-zinc-900 mb-8">About the Institution</h1>
-    
     <div className="prose prose-zinc max-w-none">
       <p className="lead text-xl text-zinc-600 mb-8">
-        {INSTITUTION.name} is an independent non-profit educational institution established to provide structured learning opportunities in Zoology and Environmental Sciences. We are committed to academic integrity, institutional transparency, and the educational advancement of our student body.
+        {INSTITUTION.name} is an independent non-profit educational institution established to provide structured learning opportunities in Zoology and Environmental Sciences.
       </p>
-
       <h3 className="text-xl font-bold mt-8 mb-4">Institutional Mandate</h3>
-      <p>Our mandate is to:</p>
       <ul className="list-disc pl-6 space-y-2 mb-8">
-        <li>Provide accessible, high-quality instruction through structured academic programs in biological sciences.</li>
-        <li>Foster a scholarly environment grounded in critical inquiry, observation, and ethical responsibility.</li>
-        <li>Maintain rigorous assessment standards to ensure student competency in scientific methods.</li>
-        <li>Operate with full transparency in governance and administration as a public-benefit entity.</li>
+        <li>Provide high-quality instruction in biological sciences.</li>
+        <li>Foster a scholarly environment grounded in critical inquiry.</li>
+        <li>Maintain rigorous assessment standards.</li>
+        <li>Operate with full transparency.</li>
       </ul>
-
       <h3 className="text-xl font-bold mt-8 mb-4">History & Founding</h3>
       <p className="text-zinc-600">
-        Established in {INSTITUTION.foundedYear} by Dr. Yazan Mohammad Aref, a distinguished PhD holder in Zoology, {INSTITUTION.name} was founded with a vision to cultivate deep expertise in the biological sciences. Dr. Aref's leadership continues to guide the institution toward academic excellence.
+        Established in {INSTITUTION.foundedYear} by Dr. Yazan Mohammad Aref, a distinguished PhD holder in Zoology.
       </p>
     </div>
   </div>
@@ -504,36 +500,12 @@ const About = () => (
 const Governance = () => (
   <div className="max-w-4xl mx-auto px-4 py-12">
     <h1 className="text-3xl font-serif font-bold text-zinc-900 mb-8">Governance & Leadership</h1>
-    
     <div className="mb-12">
       <h2 className="text-2xl font-bold text-zinc-800 mb-6">Board of Trustees</h2>
-      <div className="grid md:grid-cols-1 gap-6">
-        <div className="border p-4 rounded bg-white shadow-sm border-l-4 border-l-primary-900">
-          <div className="font-bold text-lg">Dr. Yazan Mohammad Aref</div>
-          <div className="text-sm text-primary-900 uppercase tracking-wide font-bold">Founder & Chair of the Board</div>
-          <p className="text-sm mt-2 text-zinc-600">PhD in Zoology. Established {INSTITUTION.name} in {INSTITUTION.foundedYear} to advance biological and zoological sciences through structured education.</p>
-        </div>
-      </div>
-    </div>
-
-    <div className="mb-12">
-      <h2 className="text-2xl font-bold text-zinc-800 mb-6">Organizational Structure</h2>
-      <div className="bg-zinc-50 p-8 rounded border border-zinc-200">
-        <div className="flex flex-col items-center gap-4">
-           <div className="bg-primary-900 text-white px-6 py-3 rounded-lg font-bold shadow-md">Board of Trustees & Founder</div>
-           <div className="h-6 w-0.5 bg-zinc-300"></div>
-           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 w-full text-center">
-             {[
-               'Community & Outreach', 'Webinars & Events',
-               'Media & Creative', 'Social Media & Comms', 'Website & Tech', 'Partnerships'
-             ].map(dept => (
-               <div key={dept} className="bg-white border p-3 rounded text-xs font-bold text-zinc-700 shadow-sm">
-                 {dept}
-               </div>
-             ))}
-           </div>
-        </div>
-        <p className="text-xs text-zinc-400 mt-6 text-center italic">Organizational Hierarchy valid as of 2026</p>
+      <div className="border p-4 rounded bg-white shadow-sm border-l-4 border-l-primary-900">
+        <div className="font-bold text-lg">Dr. Yazan Mohammad Aref</div>
+        <div className="text-sm text-primary-900 uppercase tracking-wide font-bold">Founder & Chair of the Board</div>
+        <p className="text-sm mt-2 text-zinc-600">PhD in Zoology. Established {INSTITUTION.name} in {INSTITUTION.foundedYear}.</p>
       </div>
     </div>
   </div>
@@ -542,51 +514,12 @@ const Governance = () => (
 const AcademicModel = () => (
   <div className="max-w-4xl mx-auto px-4 py-12">
     <h1 className="text-3xl font-serif font-bold text-zinc-900 mb-8">Academic Model & Delivery</h1>
-    
     <div className="space-y-8">
       <section>
         <h3 className="text-xl font-bold text-zinc-800 mb-3">Instructional Delivery</h3>
         <p className="text-zinc-600">
-          {INSTITUTION.name} utilizes a Hybrid delivery model. Courses are structured into modules requiring specific contact hours. Students access learning materials via our secure Learning Management System (LMS) and participate in scheduled field workshops.
+          {INSTITUTION.name} utilizes a Hybrid delivery model. Courses are structured into modules requiring specific contact hours.
         </p>
-      </section>
-
-      <section>
-        <h3 className="text-xl font-bold text-zinc-800 mb-3">Assessment Philosophy</h3>
-        <p className="text-zinc-600">
-          Student progress is measured through a combination of formative and summative assessments, including written examinations, research papers, and oral presentations. A minimum passing grade of 60% is required for certification.
-        </p>
-      </section>
-
-      <section>
-        <h3 className="text-xl font-bold text-zinc-800 mb-3">Academic Calendar</h3>
-        <div className="border rounded-lg overflow-hidden">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-zinc-100 text-zinc-700 font-bold">
-              <tr>
-                <th className="p-3 border-b">Term</th>
-                <th className="p-3 border-b">Start Date</th>
-                <th className="p-3 border-b">End Date</th>
-                <th className="p-3 border-b">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="p-3 border-b">Fall 2026</td>
-                <td className="p-3 border-b">September 1, 2026</td>
-                <td className="p-3 border-b">December 15, 2026</td>
-                <td className="p-3 border-b text-primary-700 font-medium">Enrolling</td>
-              </tr>
-              <tr>
-                <td className="p-3 border-b">Spring 2027</td>
-                <td className="p-3 border-b">January 15, 2027</td>
-                <td className="p-3 border-b">May 20, 2027</td>
-                <td className="p-3 border-b text-primary-700 font-medium">Enrolling</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <p className="text-xs text-zinc-500 mt-2">* Dates are subject to administrative change.</p>
       </section>
     </div>
   </div>
@@ -628,22 +561,6 @@ const ProgramDetail = ({ id }: { id: string }) => {
         <h1 className="text-3xl font-serif font-bold text-zinc-900 mt-3 mb-4">{prog.title}</h1>
         <p className="text-lg text-zinc-600">{prog.overview}</p>
       </div>
-
-      <div className="grid md:grid-cols-3 gap-8 mb-12">
-        <div className="bg-zinc-50 p-4 rounded border">
-          <div className="text-xs text-zinc-500 uppercase">Duration</div>
-          <div className="font-medium">{prog.duration}</div>
-        </div>
-        <div className="bg-zinc-50 p-4 rounded border">
-          <div className="text-xs text-zinc-500 uppercase">Delivery Mode</div>
-          <div className="font-medium">{prog.delivery}</div>
-        </div>
-        <div className="bg-zinc-50 p-4 rounded border">
-          <div className="text-xs text-zinc-500 uppercase">Prerequisites</div>
-          <div className="font-medium">High School Diploma or Eqv.</div>
-        </div>
-      </div>
-
       <h3 className="text-xl font-bold border-b pb-2 mb-4">Curriculum Structure</h3>
       <div className="space-y-3 mb-8">
         {prog.modules.map(mod => (
@@ -656,13 +573,6 @@ const ProgramDetail = ({ id }: { id: string }) => {
           </div>
         ))}
       </div>
-
-      <h3 className="text-xl font-bold border-b pb-2 mb-4">Learning Outcomes</h3>
-      <ul className="list-disc pl-5 space-y-2 mb-8 text-zinc-700">
-        {prog.outcomes.map((outcome, i) => (
-          <li key={i}>{outcome}</li>
-        ))}
-      </ul>
     </div>
   );
 };
@@ -670,237 +580,106 @@ const ProgramDetail = ({ id }: { id: string }) => {
 const Admissions = () => (
   <div className="max-w-4xl mx-auto px-4 py-12">
     <h1 className="text-3xl font-serif font-bold text-zinc-900 mb-8">Admissions & Enrollment</h1>
-    
-    <div className="grid md:grid-cols-2 gap-8 mb-12">
-      <div>
-        <h3 className="text-xl font-bold mb-4">Entry Requirements</h3>
-        <ul className="list-disc pl-5 space-y-2 text-zinc-600 text-sm">
-          <li>Completed Application Form</li>
-          <li>Valid Government ID</li>
-          <li>Previous Academic Transcripts</li>
-          <li>Proficiency in language of instruction</li>
-        </ul>
-      </div>
-      <div>
-        <h3 className="text-xl font-bold mb-4">Tuition & Fees</h3>
-        <p className="text-zinc-600 text-sm mb-4">
-          Tuition structures vary by program. Please refer to the specific program guide or contact the Bursar's office.
-        </p>
-      </div>
-    </div>
-
     <div className="bg-zinc-50 p-8 rounded border text-center">
       <h3 className="text-xl font-bold mb-4">Application Process</h3>
       <div className="flex justify-center gap-8 text-sm mb-6">
-        <div className="text-center">
-          <div className="w-8 h-8 bg-primary-900 text-white rounded-full flex items-center justify-center mx-auto mb-2 font-bold">1</div>
-          <div>Apply Online</div>
-        </div>
-        <div className="text-center">
-          <div className="w-8 h-8 bg-primary-900 text-white rounded-full flex items-center justify-center mx-auto mb-2 font-bold">2</div>
-          <div>Document Review</div>
-        </div>
-        <div className="text-center">
-          <div className="w-8 h-8 bg-primary-900 text-white rounded-full flex items-center justify-center mx-auto mb-2 font-bold">3</div>
-          <div>Interview</div>
-        </div>
-        <div className="text-center">
-          <div className="w-8 h-8 bg-primary-900 text-white rounded-full flex items-center justify-center mx-auto mb-2 font-bold">4</div>
-          <div>Enrollment</div>
-        </div>
-      </div>
-      <button className="bg-primary-900 text-white px-8 py-3 rounded font-medium hover:bg-primary-800 transition-colors">Begin Application</button>
-    </div>
-  </div>
-);
-
-const Policies = ({ setRoute }: { setRoute: (r: string) => void }) => {
-  const policies = [
-    { name: 'Academic Integrity', path: '/policies/academic-integrity' },
-    { name: 'Assessment & Grading', path: '/policies/assessment' },
-    { name: 'Attendance & Participation', path: '/policies/attendance' },
-    { name: 'Student Privacy (GDPR/FERPA)', path: '/policies/privacy' },
-    { name: 'Terms of Use', path: '/policies/terms' },
-    { name: 'Grievance & Appeals', path: '/policies/grievance' },
-    { name: 'Non-Discrimination', path: '/policies/nondiscrimination' },
-  ];
-
-  return (
-    <div className="max-w-4xl mx-auto px-4 py-12">
-      <h1 className="text-3xl font-serif font-bold text-zinc-900 mb-8">Institutional Policies</h1>
-      <p className="text-zinc-600 mb-8">
-        {INSTITUTION.name} is governed by a comprehensive set of policies ensuring fair treatment, academic rigor, and institutional transparency. All students and faculty are required to adhere to these standards.
-      </p>
-      <div className="grid md:grid-cols-2 gap-4">
-        {policies.map(p => (
-          <button key={p.path} onClick={() => setRoute(p.path)} className="flex items-center justify-between p-4 bg-white border rounded hover:border-primary-900 hover:bg-zinc-50 transition-all text-left group">
-            <span className="font-medium group-hover:text-primary-900">{p.name}</span>
-            <FileText className="w-4 h-4 text-zinc-400 group-hover:text-primary-900" />
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-const PolicyDetail = ({ type }: { type: string }) => {
-  const policy = POLICY_CONTENT[type];
-  
-  if (!policy) return (
-    <div className="max-w-4xl mx-auto px-4 py-12">
-      <div className="text-center py-12">
-        <h2 className="text-2xl font-bold text-zinc-900">Policy Not Found</h2>
-        <p className="text-zinc-600">The requested policy document could not be located.</p>
-      </div>
-    </div>
-  );
-
-  return (
-    <div className="max-w-4xl mx-auto px-4 py-12">
-      <div className="mb-8 border-b pb-4">
-        <h1 className="text-3xl font-serif font-bold text-zinc-900">{policy.title}</h1>
-        <p className="text-sm text-zinc-500 mt-2">Last Updated: August 2024 | Authority: Office of Academic Affairs</p>
-      </div>
-      <div className="prose prose-zinc max-w-none bg-white p-8 border rounded shadow-sm">
-        {policy.content}
-      </div>
-    </div>
-  );
-};
-
-const Staff = () => {
-  const departments = Array.from(new Set(STAFF.map(s => s.department)));
-
-  return (
-    <div className="max-w-6xl mx-auto px-4 py-12">
-      <h1 className="text-3xl font-serif font-bold text-zinc-900 mb-8">Faculty & Staff Directory</h1>
-      <p className="text-zinc-600 mb-12 max-w-3xl">
-        Our institution is supported by a dedicated team of administrators, educators, and researchers committed to the advancement of zoological sciences and student success.
-      </p>
-      
-      <div className="space-y-12">
-        {departments.map(dept => (
-          <div key={dept}>
-            <h2 className="text-xl font-bold text-zinc-800 mb-6 border-b border-zinc-200 pb-2 flex items-center gap-2">
-              <Users className="w-5 h-5 text-primary-900" />
-              {dept}
-            </h2>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {STAFF.filter(s => s.department === dept).map(member => (
-                <div key={member.id} className="bg-white border border-zinc-200 rounded-lg p-5 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="mb-4">
-                    <h3 className="font-bold text-lg text-zinc-900 leading-tight mb-1">{member.name}</h3>
-                    <div className="text-sm font-medium text-primary-900">{member.role}</div>
-                  </div>
-                  
-                  <div className="space-y-2 text-xs text-zinc-500 border-t border-zinc-100 pt-3">
-                    <div className="flex items-start gap-2">
-                      <GraduationCap className="w-3 h-3 mt-0.5 shrink-0" />
-                      <span>{member.credentials}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Mail className="w-3 h-3 shrink-0" />
-                      <a href={`mailto:${member.email}`} className="hover:text-primary-900 hover:underline transition-colors truncate">{member.email}</a>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+        {['Apply Online', 'Document Review', 'Interview', 'Enrollment'].map((step, i) => (
+          <div key={i} className="text-center">
+            <div className="w-8 h-8 bg-primary-900 text-white rounded-full flex items-center justify-center mx-auto mb-2 font-bold">{i+1}</div>
+            <div>{step}</div>
           </div>
         ))}
       </div>
     </div>
-  );
-};
+  </div>
+);
+
+const Policies = ({ setRoute }: { setRoute: (r: string) => void }) => (
+  <div className="max-w-4xl mx-auto px-4 py-12">
+    <h1 className="text-3xl font-serif font-bold text-zinc-900 mb-8">Institutional Policies</h1>
+    <div className="grid md:grid-cols-2 gap-4">
+      {['Academic Integrity', 'Assessment', 'Attendance', 'Privacy', 'Terms', 'Grievance', 'Nondiscrimination'].map(p => (
+        <button key={p} onClick={() => setRoute(`/policies/${p.toLowerCase()}`)} className="flex items-center justify-between p-4 bg-white border rounded hover:border-primary-900 hover:bg-zinc-50 transition-all text-left group">
+          <span className="font-medium group-hover:text-primary-900">{p} Policy</span>
+          <FileText className="w-4 h-4 text-zinc-400 group-hover:text-primary-900" />
+        </button>
+      ))}
+    </div>
+  </div>
+);
+
+const Staff = () => (
+  <div className="max-w-6xl mx-auto px-4 py-12">
+    <h1 className="text-3xl font-serif font-bold text-zinc-900 mb-8">Faculty & Staff Directory</h1>
+    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {STAFF.map(member => (
+        <div key={member.id} className="bg-white border border-zinc-200 rounded-lg p-5 shadow-sm">
+          <h3 className="font-bold text-lg text-zinc-900 leading-tight mb-1">{member.name}</h3>
+          <div className="text-sm font-medium text-primary-900">{member.role}</div>
+          <div className="text-xs text-zinc-500 mt-3 pt-3 border-t">
+            <div className="flex items-center gap-2"><Mail className="w-3 h-3"/> {member.email}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
 
 const Contact = () => (
   <div className="max-w-4xl mx-auto px-4 py-12">
     <h1 className="text-3xl font-serif font-bold text-zinc-900 mb-8">Contact Us</h1>
     <div className="grid md:grid-cols-2 gap-12">
-      <div className="space-y-6">
-        <div>
-          <h3 className="font-bold text-zinc-900 mb-2">Contact Information</h3>
-          <p className="text-zinc-600">Email: {INSTITUTION.email}</p>
-          <div className="mt-8 pt-8 border-t border-zinc-200">
-             <h4 className="text-xs font-bold uppercase tracking-widest text-zinc-400 mb-3">Institutional Office</h4>
-             <p className="text-zinc-800 font-medium">{INSTITUTION.name}</p>
-             <p className="text-zinc-600">{INSTITUTION.address.line1}</p>
-             <p className="text-zinc-600">{INSTITUTION.address.line2}</p>
-             <p className="text-zinc-600">{INSTITUTION.address.city}, {INSTITUTION.address.postal}</p>
-             <p className="text-zinc-600">{INSTITUTION.address.country}</p>
-          </div>
+      <div>
+        <p className="text-zinc-600">Email: {INSTITUTION.email}</p>
+        <div className="mt-8 pt-8 border-t">
+           <h4 className="text-xs font-bold uppercase tracking-widest text-zinc-400 mb-3">Office</h4>
+           <p className="text-zinc-800 font-medium">{INSTITUTION.name}</p>
+           <p className="text-zinc-600">{INSTITUTION.address.line1}, {INSTITUTION.address.city}</p>
         </div>
-      </div>
-      <div className="bg-zinc-50 p-6 rounded border">
-        <h3 className="font-bold text-zinc-900 mb-4">Send an Inquiry</h3>
-        <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
-          <div>
-            <label className="block text-xs font-bold uppercase text-zinc-500 mb-1">Name</label>
-            <input type="text" className="w-full border rounded p-2" />
-          </div>
-          <div>
-            <label className="block text-xs font-bold uppercase text-zinc-500 mb-1">Email</label>
-            <input type="email" className="w-full border rounded p-2" />
-          </div>
-          <div>
-            <label className="block text-xs font-bold uppercase text-zinc-500 mb-1">Message</label>
-            <textarea className="w-full border rounded p-2 h-32"></textarea>
-          </div>
-          <button className="bg-primary-900 text-white px-6 py-2 rounded text-sm font-medium">Send Message</button>
-        </form>
       </div>
     </div>
   </div>
 );
 
-// --- Layout & Router ---
-
-const Layout = ({ children, route, setRoute }: { children?: React.ReactNode, route: string, setRoute: (r: string) => void }) => {
-  return (
-    <div className="min-h-screen flex flex-col font-sans text-zinc-800 bg-zinc-50">
-      <header className="bg-white border-b sticky top-0 z-50 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <button onClick={() => setRoute('/')} className="flex items-center gap-3">
-             <MawilLogo className="w-10 h-10" />
-            <div className="flex flex-col items-start leading-none">
-              <span className="font-serif font-bold text-xl text-zinc-900 tracking-tight">Maw'il</span>
-              <span className="text-[10px] uppercase tracking-widest text-zinc-500">{INSTITUTION.subtitle}</span>
-            </div>
-          </button>
-          
-          <nav className="hidden md:flex gap-1">
-            <NavLink to="/" label="Home" current={route} setRoute={setRoute} />
-            <NavLink to="/about" label="About" current={route} setRoute={setRoute} />
-            <NavLink to="/programs" label="Programs" current={route} setRoute={setRoute} />
-            <NavLink to="/admissions" label="Admissions" current={route} setRoute={setRoute} />
-            <NavLink to="/contact" label="Contact" current={route} setRoute={setRoute} />
-          </nav>
-
-          <button onClick={() => setRoute('/admissions')} className="bg-primary-900 text-white px-4 py-2 rounded text-sm font-medium hover:bg-primary-800 transition-colors">
-            Apply Now
-          </button>
-        </div>
-      </header>
-      
-      <main className="flex-grow">
-        {children}
-      </main>
-
-      <Footer setRoute={setRoute} />
-      <WebsiteStatus />
+const PolicyDetail = ({ type }: { type: string }) => (
+  <div className="max-w-4xl mx-auto px-4 py-12">
+    <h1 className="text-3xl font-serif font-bold text-zinc-900 capitalize mb-8">{type} Policy</h1>
+    <div className="bg-white p-8 border rounded shadow-sm">
+      <p>Policy content for {type} is currently available in the institutional handbook. For direct inquiries, please contact the Office of Academic Affairs.</p>
     </div>
-  );
-};
+  </div>
+);
+
+// --- Layout ---
+
+const Layout = ({ children, route, setRoute }: { children?: React.ReactNode, route: string, setRoute: (r: string) => void }) => (
+  <div className="min-h-screen flex flex-col font-sans text-zinc-800 bg-zinc-50">
+    <header className="bg-white border-b sticky top-0 z-50 shadow-sm">
+      <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+        <button onClick={() => setRoute('/')} className="flex items-center gap-3">
+           <MawilLogo className="w-10 h-10" />
+           <span className="font-serif font-bold text-xl text-zinc-900">Maw'il</span>
+        </button>
+        <nav className="hidden md:flex gap-1">
+          {['Home', 'About', 'Programs', 'Admissions', 'Contact'].map(l => (
+            <NavLink key={l} to={l === 'Home' ? '/' : `/${l.toLowerCase()}`} label={l} current={route} setRoute={setRoute} />
+          ))}
+        </nav>
+        <button onClick={() => setRoute('/admissions')} className="bg-primary-900 text-white px-4 py-2 rounded text-sm font-medium">Apply</button>
+      </div>
+    </header>
+    <main className="flex-grow">{children}</main>
+    <Footer setRoute={setRoute} />
+    <WebsiteStatus />
+    <MawilAssistant />
+  </div>
+);
 
 const App = () => {
   const [route, setRoute] = useState('/');
-  
-  // Simple client-side router
   const renderPage = () => {
-    // Handle parameterized routes first
     if (route.startsWith('/programs/')) return <ProgramDetail id={route.split('/')[2]} />;
     if (route.startsWith('/policies/')) return <PolicyDetail type={route.split('/')[2]} />;
-
     switch (route) {
       case '/': return <Home setRoute={setRoute} />;
       case '/about': return <About />;
@@ -909,22 +688,12 @@ const App = () => {
       case '/programs': return <Programs setRoute={setRoute} />;
       case '/admissions': return <Admissions />;
       case '/policies': return <Policies setRoute={setRoute} />;
-      case '/contact': return <Contact />;
       case '/staff': return <Staff />;
+      case '/contact': return <Contact />;
       default: return <Home setRoute={setRoute} />;
     }
   };
-
-  useEffect(() => {
-    // Scroll to top on route change
-    window.scrollTo(0,0);
-  }, [route]);
-
-  return (
-    <Layout route={route} setRoute={setRoute}>
-      {renderPage()}
-    </Layout>
-  );
+  return <Layout route={route} setRoute={setRoute}>{renderPage()}</Layout>;
 };
 
 const root = createRoot(document.getElementById('root')!);
